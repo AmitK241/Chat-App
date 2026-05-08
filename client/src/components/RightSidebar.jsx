@@ -16,40 +16,51 @@ const RightSidebar = () => {
   if (!selectedUser) return null;
 
   return (
-    <div className="bg-[#8185B2]/10 text-white w-full relative overflow-y-scroll max-md:hidden p-5">
+    <div
+      className="text-white w-full relative overflow-y-scroll max-md:hidden p-6"
+      style={{ background: 'var(--bg-card)' }}
+    >
 
       {/* Profile Section */}
-      <div className="pt-10 flex flex-col items-center gap-3 text-sm font-light">
+      <div className="pt-8 flex flex-col items-center gap-4">
         <img
           src={selectedUser.profilePic || assets.avatar_icon}
           alt=""
-          className="w-20 h-20 rounded-full shadow-lg border border-white/10"
+          className="w-20 h-20 rounded-full object-cover avatar-ring"
         />
 
-        <h1 className="text-xl font-medium flex items-center gap-2">
-          {onlineUsers.includes(selectedUser._id) && (
-            <span className="w-2 h-2 rounded-full bg-green-500"></span>
-          )}
-          {selectedUser.fullName}
-        </h1>
+        <div className="text-center">
+          <h1 className="text-lg font-bold text-[var(--text-white)] flex items-center justify-center gap-2">
+            {selectedUser.fullName}
+            {onlineUsers.includes(selectedUser._id) && (
+              <span className="online-dot"></span>
+            )}
+          </h1>
 
-        <p className="text-center opacity-80 px-4">{selectedUser.bio}</p>
+          <p className="text-[var(--text-muted)] text-xs mt-2 leading-relaxed px-2">
+            {selectedUser.bio}
+          </p>
+        </div>
       </div>
 
-      <hr className="border-white/20 my-5" />
+      <hr className="premium-divider my-6" />
 
       {/* Shared Media Section */}
       <div>
-        <p className="text-sm font-medium opacity-90 mb-2">Shared Media</p>
+        <p className="text-xs font-bold text-[var(--text-secondary)] tracking-wider uppercase mb-3">
+          Shared Media
+        </p>
 
-        <div className="max-h-[200px] overflow-y-auto grid grid-cols-3 gap-3 pr-2">
+        <div className="max-h-[200px] overflow-y-auto grid grid-cols-3 gap-2">
           {msgImages.map((url, index) => (
             <div
               key={index}
               onClick={() => window.open(url, "_blank")}
-              className="cursor-pointer rounded overflow-hidden border border-white/10 hover:border-white/40 transition"
+              className="cursor-pointer overflow-hidden border border-[var(--border-subtle)]
+                         hover:border-[var(--border-green)] transition-all"
+              style={{ borderRadius: 'var(--radius-xs)' }}
             >
-              <img src={url} alt="" className="w-full h-24 object-cover rounded" />
+              <img src={url} alt="" className="w-full h-24 object-cover hover:scale-105 transition-transform duration-300" />
             </div>
           ))}
         </div>
@@ -58,9 +69,8 @@ const RightSidebar = () => {
       {/* Logout Button */}
       <button
         onClick={logout}
-        className="w-full mt-5 bg-gradient-to-r from-purple-600 to-indigo-600 
-                   py-2 rounded-full text-white text-sm font-medium shadow-lg 
-                   hover:shadow-xl hover:from-purple-500 hover:to-indigo-500 transition-all"
+        className="btn-outline w-full mt-6 py-2.5 text-sm cursor-pointer"
+        style={{ borderRadius: 'var(--radius-sm)' }}
       >
         Logout
       </button>
@@ -69,4 +79,3 @@ const RightSidebar = () => {
 };
 
 export default RightSidebar;
-

@@ -32,26 +32,39 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-cover bg-center flex items-center justify-center gap-8 sm:justify-evenly max-sm:flex-col backdrop-blur-2xl">
-      {/* Left Section */}
-      <img src={assets.logo_big} alt="" className="w-[min(30vw,250px)]" />
+    <div className="min-h-screen flex items-center justify-center gap-8 sm:justify-evenly max-sm:flex-col relative z-10 px-4">
+      {/* Left Section — Logo */}
+      <div className="flex flex-col items-center gap-3 animate-fade-up">
+        <img
+          src={assets.logo_big}
+          alt="QuickChat Logo"
+          className="w-[min(30vw,220px)]"
+        />
+      </div>
 
-      {/* Right Section */}
+      {/* Right Section — Form */}
       <form
         onSubmit={onSubmitHandler}
-        className="border-2 bg-white/10 text-white border-gray-500 p-6 flex flex-col gap-6 rounded-lg shadow-lg"
+        className="premium-card p-8 flex flex-col gap-5 w-full max-w-sm animate-fade-up"
+        style={{ animationDelay: '0.1s', opacity: 0 }}
       >
-        <h2 className="font-medium text-2xl flex justify-between items-center">
+        <h2 className="font-bold text-2xl text-[var(--text-white)] tracking-tight">
           {currState}
           {isDataSubmitted && currState === "Sign up" && (
             <img
               onClick={() => setIsDataSubmitted(false)}
               src={assets.arrow_icon}
-              alt=""
-              className="w-5 cursor-pointer"
+              alt="Go back"
+              className="w-5 cursor-pointer inline-block ml-3 invert opacity-50 hover:opacity-100 transition-opacity"
             />
           )}
         </h2>
+
+        <p className="text-sm text-[var(--text-muted)] -mt-2">
+          {currState === "Sign up"
+            ? "Create your QuickChat account"
+            : "Welcome back to QuickChat"}
+        </p>
 
         {/* Step 1 extra field for signup */}
         {currState === "Sign up" && !isDataSubmitted && (
@@ -59,7 +72,7 @@ const LoginPage = () => {
             onChange={(e) => setFullName(e.target.value)}
             value={fullName}
             type="text"
-            className="p-2 border border-gray-500 rounded-md focus:outline-none"
+            className="premium-input"
             placeholder="Full Name"
             required
           />
@@ -70,7 +83,7 @@ const LoginPage = () => {
           onChange={(e) => setEmail(e.target.value)}
           value={email}
           type="email"
-          className="p-2 border border-gray-500 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="premium-input"
           placeholder="Email Address"
           required
         />
@@ -79,7 +92,7 @@ const LoginPage = () => {
           onChange={(e) => setPassword(e.target.value)}
           value={password}
           type="password"
-          className="p-2 border border-gray-500 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="premium-input"
           placeholder="Password"
           required
         />
@@ -90,52 +103,57 @@ const LoginPage = () => {
             onChange={(e) => setBio(e.target.value)}
             value={bio}
             rows={4}
-            className="p-2 border border-gray-500 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="premium-input resize-none"
             placeholder="Provide a short bio about yourself"
           ></textarea>
         )}
 
         <button
           type="submit"
-          className="py-3 bg-gradient-to-r from-purple-400 to-indigo-600 text-white rounded-md cursor-pointer"
+          className="btn-green py-3.5 cursor-pointer text-center"
+          style={{ borderRadius: 'var(--radius-sm)' }}
         >
           {currState === "Sign up"
             ? isDataSubmitted
               ? "Complete Sign Up"
-              : "Next"
-            : "Login"}
+              : "Continue"
+            : "Sign In"}
         </button>
 
-        <div className="flex items-center gap-2 text-sm text-gray-500">
-          <input type="checkbox" required />
+        <div className="flex items-center gap-2.5 text-sm text-[var(--text-muted)]">
+          <input
+            type="checkbox"
+            required
+            className="w-4 h-4 accent-[#22c55e] rounded"
+          />
           <p>Agree to the terms of use & privacy policy.</p>
         </div>
 
         <div className="flex flex-col gap-2">
           {currState === "Sign up" ? (
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-[var(--text-secondary)]">
               Already have an account?{" "}
               <span
                 onClick={() => {
                   setCurrState("Login");
                   setIsDataSubmitted(false);
                 }}
-                className="font-medium text-violet-500 cursor-pointer"
+                className="text-[var(--text-green)] cursor-pointer hover:underline font-semibold transition-colors"
               >
-                Login here
+                Sign in
               </span>
             </p>
           ) : (
-            <p className="text-sm text-gray-600">
-              Create an account{" "}
+            <p className="text-sm text-[var(--text-secondary)]">
+              New to QuickChat?{" "}
               <span
                 onClick={() => {
                   setCurrState("Sign up");
                   setIsDataSubmitted(false);
                 }}
-                className="font-medium text-violet-500 cursor-pointer"
+                className="text-[var(--text-green)] cursor-pointer hover:underline font-semibold transition-colors"
               >
-                Click here
+                Create account
               </span>
             </p>
           )}
@@ -146,4 +164,3 @@ const LoginPage = () => {
 };
 
 export default LoginPage;
-
