@@ -10,7 +10,10 @@ const messageSchema = new mongoose.Schema(
     receiverId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+    },
+    roomId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Room",
     },
     text: {
       type: String,
@@ -18,15 +21,39 @@ const messageSchema = new mongoose.Schema(
     image: {
       type: String,
     },
+    // Legacy field — kept for backward compat
     seen: {
       type: Boolean,
       default: false,
     },
+    // New status lifecycle: sent → delivered → read
+    status: {
+      type: String,
+      enum: ["sent", "delivered", "read"],
+      default: "sent",
+    },
+    deliveredAt: {
+      type: Date,
+    },
+    readAt: {
+      type: Date,
+    },
+    // For room messages: track who has read it
+    readBy: [
+      {
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        readAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   { timestamps: true }
 );
 
-// Use "Message" as model name, not "User"
+// Index for fast DM lookups
+messageSchema.index({ senderId: 1, receiverId: 1, createdAt: 1 });
+// Index for room message lookups
+messageSchema.index({ roomId: 1, createdAt: 1 });
+
 const Message = mongoose.model("Message", messageSchema);
 
 export default Message;

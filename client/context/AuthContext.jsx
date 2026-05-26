@@ -13,6 +13,7 @@ export const AuthProvider = ({ children }) => {
   const [authUser, setAuthUser] = useState(null);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [socket, setSocket] = useState(null);
+  const [typingUsers, setTypingUsers] = useState({});
 
   // Check authentication only when token exists
   const checkAuth = async () => {
@@ -24,7 +25,6 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       console.log("Auth check failed:", error.message);
-      // Do NOT toast error on page load
     }
   };
 
@@ -52,6 +52,7 @@ export const AuthProvider = ({ children }) => {
     setToken(null);
     setAuthUser(null);
     setOnlineUsers([]);
+    setTypingUsers({});
     axios.defaults.headers.common["token"] = null;
     if (socket) socket.disconnect();
     toast.success("Logged out successfully");
@@ -84,12 +85,26 @@ export const AuthProvider = ({ children }) => {
     newSocket.on("getOnlineUsers", (userIds) => {
       setOnlineUsers(userIds);
     });
+
+    // ── Typing listeners ──────────────────────
+    newSocket.on("typing:start", ({ userId, roomId, receiverId }) => {
+      const key = roomId || receiverId || userId;
+      setTypingUsers((prev) => ({ ...prev, [key]: userId }));
+    });
+
+    newSocket.on("typing:stop", ({ userId, roomId, receiverId }) => {
+      const key = roomId || receiverId || userId;
+      setTypingUsers((prev) => {
+        const copy = { ...prev };
+        delete copy[key];
+        return copy;
+      });
+    });
   };
 
   // FIXED useEffect
   useEffect(() => {
-    if (!token) return;               // ⛔ DO NOT RUN checkAuth without token
-
+    if (!token) return;
     axios.defaults.headers.common["token"] = token;
     checkAuth();
   }, [token]);
@@ -99,6 +114,8 @@ export const AuthProvider = ({ children }) => {
     authUser,
     onlineUsers,
     socket,
+    typingUsers,
+    setTypingUsers,
     login,
     logout,
     updateProfile,
@@ -110,10 +127,3 @@ export const AuthProvider = ({ children }) => {
     </AuthContext.Provider>
   );
 };
-
-
-
-
-
-
-

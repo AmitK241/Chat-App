@@ -2,78 +2,144 @@ import Message from "../models/Message.js";
 import User from "../models/User.js";
 import cloudinary from "../lib/cloudinary.js";
 import { io, userSocketMap } from "../server.js";
+import { getBulkUserStatus } from "../lib/redis.js";
 
-//Get all users except the logged in user
-
-export const getUserForSideBar = async (req, res) =>{
-    try{
-        const userId = req.user._id;
-        const filteredUsers = await User.find({_id: {$ne: userId}}).select
-        ("-password");
-
-        //count number of messages not seen
-        const unseenMessages = {}
-        const promises = filteredUsers.map(async (user)=>{
-            const messages = await Message.find({senderId: user._id, receiverId:
-            userId, seen: false })
-            if(messages.length >0){
-                unseenMessages[user._id] = messages.length;
-            }
-        })
-        await Promise.all(promises);
-        res.json({success: true, users: filteredUsers, unseenMessages})
-    } catch(error){
-        console.log(error.message);
-        res.json({success: false, message: error.message})
-    }
-
-}
-
-//Get all messages for selected user
-// 
-
-export const getMessages = async (req, res) => {
+// ─── Get all users except the logged in user ────────────
+export const getUserForSideBar = async (req, res) => {
   try {
-    const { id: selectedUserId } = req.params; // the other user
-    const myId = req.user._id; // logged in user
-
-    // Fetch conversation between both users
-    const messages = await Message.find({
-      $or: [
-        { senderId: myId, receiverId: selectedUserId },
-        { senderId: selectedUserId, receiverId: myId },
-      ],
-    }).sort({ createdAt: 1 });
-
-    // Mark received messages as seen
-    await Message.updateMany(
-      { senderId: selectedUserId, receiverId: myId },
-      { seen: true }
+    const userId = req.user._id;
+    const filteredUsers = await User.find({ _id: { $ne: userId } }).select(
+      "-password"
     );
 
-    res.json({ success: true, messages });
+    // Count unseen messages per user
+    const unseenMessages = {};
+    const promises = filteredUsers.map(async (user) => {
+      const count = await Message.countDocuments({
+        senderId: user._id,
+        receiverId: userId,
+        status: { $ne: "read" },
+        seen: false,
+      });
+      if (count > 0) {
+        unseenMessages[user._id] = count;
+      }
+    });
+    await Promise.all(promises);
 
+    // Get Redis status for all users
+    let statusMap = {};
+    try {
+      const userIds = filteredUsers.map((u) => u._id.toString());
+      statusMap = await getBulkUserStatus(userIds);
+    } catch (err) {
+      console.log("Redis bulk status error:", err.message);
+    }
+
+    res.json({
+      success: true,
+      users: filteredUsers,
+      unseenMessages,
+      statusMap,
+    });
   } catch (error) {
     console.log(error.message);
     res.json({ success: false, message: error.message });
   }
 };
 
+// ─── Get all messages for selected user ─────────────────
+export const getMessages = async (req, res) => {
+  try {
+    const { id: selectedUserId } = req.params;
+    const myId = req.user._id;
 
-// Api to mark messages as seen using messages id
+    // Fetch conversation between both users
+    const messages = await Message.find({
+      roomId: { $exists: false },
+      $or: [
+        { senderId: myId, receiverId: selectedUserId },
+        { senderId: selectedUserId, receiverId: myId },
+      ],
+    }).sort({ createdAt: 1 });
 
-export const markMessageAsSeen = async (req, res) =>{
-    try{
-        const {id} = req.params;
-        await Message.findByIdAndUpdate(id, {seen: true})
-        res.json({success: true})
-    } catch(error){
-        console.log(error.message);
-        res.json({success: false, message: error.message})
+    // Batch mark received messages as read using bulkWrite
+    const bulkOps = messages
+      .filter(
+        (m) =>
+          m.senderId.toString() === selectedUserId &&
+          m.receiverId.toString() === myId.toString() &&
+          m.status !== "read"
+      )
+      .map((m) => ({
+        updateOne: {
+          filter: { _id: m._id },
+          update: {
+            $set: {
+              seen: true,
+              status: "read",
+              readAt: new Date(),
+            },
+          },
+        },
+      }));
+
+    if (bulkOps.length > 0) {
+      await Message.bulkWrite(bulkOps);
+
+      // Notify sender about read receipts
+      const senderSocketId = userSocketMap[selectedUserId];
+      if (senderSocketId) {
+        const readMessageIds = bulkOps.map((op) => op.updateOne.filter._id);
+        io.to(senderSocketId).emit("messages:read:batch", {
+          messageIds: readMessageIds,
+          readBy: myId,
+          readAt: new Date(),
+        });
+      }
     }
-}
 
-//Send message to selected user
+    res.json({ success: true, messages });
+  } catch (error) {
+    console.log(error.message);
+    res.json({ success: false, message: error.message });
+  }
+};
+
+// ─── Mark message as read ───────────────────────────────
+export const markMessageAsSeen = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const msg = await Message.findByIdAndUpdate(
+      id,
+      {
+        seen: true,
+        status: "read",
+        readAt: new Date(),
+      },
+      { new: true }
+    );
+
+    // Notify sender
+    if (msg) {
+      const senderSocketId = userSocketMap[msg.senderId.toString()];
+      if (senderSocketId) {
+        io.to(senderSocketId).emit("message:read", {
+          messageId: id,
+          readBy: req.user._id,
+          readAt: new Date(),
+        });
+      }
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.log(error.message);
+    res.json({ success: false, message: error.message });
+  }
+};
+
+// ─── Send message to selected user ──────────────────────
 export const sendMessage = async (req, res) => {
   try {
     const { text, image } = req.body;
@@ -81,25 +147,27 @@ export const sendMessage = async (req, res) => {
     const senderId = req.user._id;
 
     let imageUrl = null;
-
-    // Upload image if provided
     if (image) {
       const uploadResponse = await cloudinary.uploader.upload(image);
       imageUrl = uploadResponse.secure_url;
     }
 
-    // Create new message
+    // Determine initial status — if receiver is online, mark as delivered
+    const receiverSocketId = userSocketMap[receiverId];
+    const initialStatus = receiverSocketId ? "delivered" : "sent";
+
     const newMessage = await Message.create({
       senderId,
       receiverId,
       text,
       image: imageUrl,
-    })
+      status: initialStatus,
+      deliveredAt: receiverSocketId ? new Date() : undefined,
+    });
 
-    //Emit the new message to the receiver's socket
-    const receiverSocketId = userSocketMap[receiverId];
-    if(receiverSocketId){
-        io.to(receiverSocketId).emit("newMessage", newMessage)
+    // Emit the new message to the receiver's socket
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("newMessage", newMessage);
     }
 
     return res.json({ success: true, newMessage });
@@ -108,5 +176,3 @@ export const sendMessage = async (req, res) => {
     return res.json({ success: false, message: error.message });
   }
 };
-
-

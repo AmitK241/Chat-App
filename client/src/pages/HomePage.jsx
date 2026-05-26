@@ -5,16 +5,16 @@ import RightSidebar from '../components/RightSidebar.jsx';
 import { ChatContext } from '../../context/ChatContext.jsx';
 
 const HomePage = () => {
-
-  const { selectedUser } = useContext(ChatContext);
+  const { selectedUser, selectedRoom } = useContext(ChatContext);
+  const hasSelection = selectedUser || selectedRoom;
 
   return (
-    <div className='w-full h-screen sm:px-[10%] sm:py-[3%] relative z-10'>
+    <div className='w-full h-screen sm:px-[8%] sm:py-[2.5%] relative z-10'>
       <div
         className={`
-          premium-card overflow-hidden h-full grid
-          ${selectedUser 
-            ? 'grid-cols-1 md:grid-cols-[1fr_1.5fr_1fr] xl:grid-cols-[1fr_2fr_1fr]' 
+          neu-card overflow-hidden h-full grid
+          ${hasSelection
+            ? 'grid-cols-1 md:grid-cols-[1fr_1.5fr_1fr] xl:grid-cols-[1fr_2fr_1fr]'
             : 'grid-cols-1 md:grid-cols-2'
           }
         `}
