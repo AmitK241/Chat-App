@@ -4,6 +4,7 @@ import cors from "cors";
 import http from "http";
 import { Server } from "socket.io";
 
+import mongoose from "mongoose";
 import { connectDB } from "./lib/db.js";
 import { connectRedis } from "./lib/redis.js";
 import userRouter from "./routes/userRoutes.js";
@@ -48,18 +49,22 @@ app.use(
 app.use(express.json({ limit: "4mb" }));
 
 // ── Routes ──────────────────────────────────────────────
-app.use("/api/status", (req, res) => res.send("Server is running"));
-app.get("/api/health", (req, res) => {
-  const dbReady = req.app.locals.dbReady;
-  res.json({ ok: Boolean(dbReady), db: dbReady ? "connected" : "disconnected" });
-});
+const healthCheck = (req, res) => {
+  const connected = mongoose.connection.readyState === 1;
+  res.json({
+    status: "Server is running",
+    ok: connected,
+    db: connected ? "connected" : "disconnected",
+  });
+};
+app.get("/api/status", healthCheck);
+app.get("/api/health", healthCheck);
 app.use("/api/auth", userRouter);
 app.use("/api/messages", messageRouter);
 app.use("/api/rooms", roomRouter);
 
 // ── Connect to Database & Redis ─────────────────────────
 await connectDB();
-app.locals.dbReady = true;
 
 // Initialize Redis (non-blocking — falls back to in-memory)
 connectRedis();
