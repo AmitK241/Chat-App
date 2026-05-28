@@ -49,6 +49,12 @@ app.use(
 app.use(express.json({ limit: "4mb" }));
 
 // ── Routes ──────────────────────────────────────────────
+app.get("/", (req, res) => {
+  res.send(
+    "QuickChat API is running. Use the app at https://chat-app-client-wheat-three.vercel.app — health: /api/health"
+  );
+});
+
 const healthCheck = (req, res) => {
   const connected = mongoose.connection.readyState === 1;
   res.json({
