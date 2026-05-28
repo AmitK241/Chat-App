@@ -6,6 +6,14 @@
   },
   "rewrites": [
     {
+      "source": "/api/:path*",
+      "destination": "https://chat-app-5suh.onrender.com/api/:path*"
+    },
+    {
+      "source": "/socket.io/:path*",
+      "destination": "https://chat-app-5suh.onrender.com/socket.io/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/"
     }

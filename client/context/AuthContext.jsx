@@ -2,9 +2,7 @@ import { createContext, useEffect, useState } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { io } from "socket.io-client";
-import { BACKEND_URL } from "../src/config.js";
-
-axios.defaults.baseURL = BACKEND_URL;
+import { getBackendUrl } from "../src/config.js";
 
 export const AuthContext = createContext();
 
@@ -75,7 +73,7 @@ export const AuthProvider = ({ children }) => {
   const connectSocket = (userData) => {
     if (!userData || socket?.connected) return;
 
-    const newSocket = io(BACKEND_URL, {
+    const newSocket = io(getBackendUrl(), {
       query: { userId: userData._id },
     });
 
@@ -102,7 +100,12 @@ export const AuthProvider = ({ children }) => {
     });
   };
 
-  // FIXED useEffect
+  useEffect(() => {
+    const apiUrl = getBackendUrl();
+    axios.defaults.baseURL = apiUrl;
+    console.info("[QuickChat] API URL:", apiUrl);
+  }, []);
+
   useEffect(() => {
     if (!token) return;
     axios.defaults.headers.common["token"] = token;
