@@ -15,7 +15,8 @@ import { initializeSocket, userSocketMap } from "./services/socketService.js";
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
-  process.env.CLIENT_URL, // set to Vercel client URL in production
+  "https://chat-app-client-wheat-three.vercel.app",
+  process.env.CLIENT_URL,
 ].filter(Boolean);
 
 // ── Create Express app and HTTP server ──────────────────
@@ -48,17 +49,17 @@ app.use(express.json({ limit: "4mb" }));
 
 // ── Routes ──────────────────────────────────────────────
 app.use("/api/status", (req, res) => res.send("Server is running"));
+app.get("/api/health", (req, res) => {
+  const dbReady = req.app.locals.dbReady;
+  res.json({ ok: Boolean(dbReady), db: dbReady ? "connected" : "disconnected" });
+});
 app.use("/api/auth", userRouter);
 app.use("/api/messages", messageRouter);
 app.use("/api/rooms", roomRouter);
 
 // ── Connect to Database & Redis ─────────────────────────
-try {
-  await connectDB();
-} catch (error) {
-  console.log("Failed to connect to database:", error.message);
-  console.log("Server will start without database connection.");
-}
+await connectDB();
+app.locals.dbReady = true;
 
 // Initialize Redis (non-blocking — falls back to in-memory)
 connectRedis();

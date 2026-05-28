@@ -9,35 +9,34 @@ const mongoOptions = {
     w: 'majority',
 };
 
-// Standard (non-SRV) connection string — bypasses DNS SRV lookup issues on Windows
-// Lists all 3 replica set members so Mongoose can discover the primary for writes
-const FALLBACK_URI = "mongodb://AmitKumar:amit123@ac-bbgcxjh-shard-00-00.hy25ijr.mongodb.net:27017,ac-bbgcxjh-shard-00-01.hy25ijr.mongodb.net:27017,ac-bbgcxjh-shard-00-02.hy25ijr.mongodb.net:27017/chat-app?ssl=true&authSource=admin&replicaSet=atlas-v5o9x0-shard-0";
+function getEnvMongoUri() {
+    const raw = process.env.MONGODB_URI || process.env.MONGO_URI || '';
+    return raw.trim().replace(/^["']|["']$/g, '');
+}
+
+function resolveMongoUri() {
+    const uri = getEnvMongoUri();
+    if (!uri) {
+        throw new Error('MONGODB_URI is not set in server/.env');
+    }
+    // Use URI as-is when it already includes a database (e.g. /chatapp)
+    if (/@[^/]+\/[^/?]+/.test(uri)) return uri;
+    const qIndex = uri.indexOf('?');
+    const base = qIndex === -1 ? uri : uri.slice(0, qIndex);
+    const query = qIndex === -1 ? '' : uri.slice(qIndex);
+    return `${base.replace(/\/$/, '')}/chatapp${query}`;
+}
 
 // Function to connect to the MongoDB database
 export const connectDB = async () => {
+    if (mongoose.connection.readyState === 1) return;
+
     mongoose.connection.on('connected', () => console.log('Database Connected'));
     mongoose.connection.on('error', (err) => console.log('MongoDB connection error:', err.message));
 
-    // Try SRV connection first
-    try {
-        console.log('Attempting MongoDB connection (SRV)...');
-        await mongoose.connect(`${process.env.MONGODB_URI}/chat-app`, mongoOptions);
-        return;
-    } catch (error) {
-        console.log('SRV connection failed:', error.message);
-        console.log('Trying standard connection string (non-SRV fallback)...');
-    }
-
-    // Fallback to standard connection string
-    try {
-        await mongoose.connect(FALLBACK_URI, mongoOptions);
-    } catch (error) {
-        console.log('Standard connection also failed:', error.message);
-        console.log('\n⚠️  MongoDB connection failed. Check:');
-        console.log('  1. Your IP is whitelisted in Atlas Network Access');
-        console.log('  2. Your internet connection is working');
-        console.log('  3. Your MongoDB credentials are correct\n');
-    }
+    const uri = resolveMongoUri();
+    console.log('Connecting to MongoDB...');
+    await mongoose.connect(uri, mongoOptions);
 };
 
 
