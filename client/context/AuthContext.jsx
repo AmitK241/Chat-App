@@ -2,9 +2,9 @@ import { createContext, useEffect, useState } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { io } from "socket.io-client";
+import { BACKEND_URL } from "../src/config.js";
 
-const backendUrl = import.meta.env.VITE_BACKEND_URL;
-axios.defaults.baseURL = backendUrl;
+axios.defaults.baseURL = BACKEND_URL;
 
 export const AuthContext = createContext();
 
@@ -75,7 +75,7 @@ export const AuthProvider = ({ children }) => {
   const connectSocket = (userData) => {
     if (!userData || socket?.connected) return;
 
-    const newSocket = io(backendUrl, {
+    const newSocket = io(BACKEND_URL, {
       query: { userId: userData._id },
     });
 
